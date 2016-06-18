@@ -63,6 +63,7 @@ exports.findConfig = function (callback) {
 };
 
 exports.setConfigDir = function (dir) {
+  console.log(dir);
   exports.CONFIG_DIR = dir;
   exports.CLUSTERS_JSON = dir + '/clusters.json';
   exports.VARIABLES_JSON = dir + '/variables.json';
@@ -314,7 +315,7 @@ exports.saveInstanceToCluster = function (clusterName, instance, callback) {
   var clusters = exports.getClusters();
   clusters[clusterName] = clusters[clusterName] || { instances: {} };
   clusters[clusterName].instances[instance.name] = instance;
-  exports.saveClusters(clusters, callback);
+  exports.appendClusters(clusters, callback);
 };
 
 exports.deleteInstance = function (instance, callback) {
@@ -395,6 +396,41 @@ exports.getClusters = function () {
 };
 
 exports.saveClusters = function (clusters, done) {
+  exports.clustersCache = clusters;
+  
+  fs.writeFile(exports.CLUSTERS_JSON, JSON.stringify(clusters, null, 2), function (err) {
+    if (err) {
+      exports.error('Error saving clusters.json.');
+    } else {
+      if (_.isFunction(done)) {
+        done();
+      }
+    }
+  });
+};
+
+exports.appendClusters = function (clusters, done) {
+  
+  if (fs.existsSync(exports.CLUSTERS_JSON)) {
+    try {
+      var existingClusters = JSON.parse(fs.readFileSync(exports.CLUSTERS_JSON));
+      
+      if (!existingClusters) {
+        for (var i = 0; i < 20; i++) {
+          var existingClusters = JSON.parse(fs.readFileSync(exports.CLUSTERS_JSON));
+          if (existingClusters) break;
+        }
+      }
+    } catch (e) {
+      console.log('Unable to parse the clusters.json file. Please correct the parsing error.'.red);
+      process.exit(1);
+    }
+  }
+
+  console.log(existingClusters);
+  console.log(_.merge(clusters, existingClusters));
+  console.log(clusters);
+
   exports.clustersCache = clusters;
   fs.writeFile(exports.CLUSTERS_JSON, JSON.stringify(clusters, null, 2), function (err) {
     if (err) {
